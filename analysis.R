@@ -53,6 +53,29 @@ saveRDS(classification_results, file.path("data", "classification_results.rds"))
 saveRDS(position_results, file.path("data", "position_results.rds"))
 saveRDS(calculation_results, file.path("data", "calculation_results.rds"))
 
+# Calculate Scores For Perot, Considering Campaigns Separately
+perot_row_1 <- position_results |>
+  dplyr::filter(party == "Perot 1992") |>
+  dplyr::mutate(major_party_platforms = list(
+    list(
+      list(before = paste("Republican Party 1992"), after = paste("Republican Party 1996"), weight = 1),
+      list(before = paste("Democratic Party 1992"), after = paste("Democratic Party 1996"), weight = 1)
+    )
+  ))
+perot_row_2 <- position_results |>
+  dplyr::filter(party == "Perot 1992") |>
+  dplyr::mutate(major_party_platforms = list(
+    list(
+      list(before = paste("Republican Party 1996"), after = paste("Republican Party 2000"), weight = 1),
+      list(before = paste("Democratic Party 1996"), after = paste("Democratic Party 2000"), weight = 1)
+    )
+  ), party = "Perot 1996")
+major_rows <- position_results |>
+  dplyr::filter(stringr::str_detect(party, "(?=.*Democratic|Republican)(?=.*(1992|1996|2000))"))
+perot_scores_seperate <- dplyr::bind_rows(perot_row_1, perot_row_2, major_rows) |>
+  minorparties::calculate_iscores(confidence_intervals = TRUE)
+saveRDS(perot_scores_seperate, file.path("data", "perot_scores_seperate.rds"))
+
 # Build Graphs
 
 ## Figure 1: IScores
