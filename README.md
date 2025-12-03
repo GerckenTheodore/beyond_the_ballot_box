@@ -8,6 +8,8 @@ The `analysis.R` script builds the paper's data set from the raw platforms in `/
 
 - Calculates and plots the I-Scores (along with confidence intervals) for minor parties that won more than 0.5% of the presidential vote in a given election between 1948 and 2024.
 
+- Creates tables to summarize Ross Perot's I-Score calculations and display the I-Scores of all studied minor parties.
+
 - Calculates the correlation between parties' I-Scores and the number of votes and legislative seats they won.
 
 - Tests the method's robustness by recalculating I-Scores for a wide range of possible values for the arbitrarily chosen variables, calculating the significance of the choices and plotting their effect, and carrying out an ANOVA test to determine what proportion of variance in the scores was explained by the choices.

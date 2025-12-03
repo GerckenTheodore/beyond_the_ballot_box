@@ -35,10 +35,10 @@ additional_data <- read.csv("platforms/additional_data.csv") |>
         weight = 1
       )
     )
-  })) |>
+  }))
+additional_data_slim <- additional_data |>
   dplyr::select(-movement_start, -movement_end)
-
-data <- dplyr::left_join(data, additional_data, by = "party")
+data <- dplyr::left_join(data, additional_data_slim, by = "party")
 saveRDS(data, file.path("data", "data.rds"))
 
 # Calculate IScores
@@ -47,7 +47,7 @@ classification_results <- minorparties::process_platform_emphasis(data)
 position_results <- minorparties::process_platform_position(classification_results)
 calculation_results <- position_results |>
   minorparties::calculate_iscores(confidence_intervals = TRUE, calculation_tables = TRUE) |>
-  dplyr::left_join(additional_data, by = "party") |>
+  dplyr::left_join(additional_data_slim, by = "party") |>
   dplyr::select(-major_party_platforms)
 saveRDS(classification_results, file.path("data", "classification_results.rds"))
 saveRDS(position_results, file.path("data", "position_results.rds"))
@@ -98,6 +98,239 @@ fig_2 <- ggplot2::ggplot(fig_2_tibble, ggplot2::aes(y = party, x = est)) +
   ) +
   ggplot2::theme_bw()
 ggplot2::ggsave(plot = fig_2, filename = file.path("plots", "fig2.png"), width = 10, height = 10, dpi = 300)
+
+# Build Tables
+
+## Table Styling
+style_table <- function(table) {
+  table |>
+    gt::fmt_missing(columns = gt::everything(), missing_text = "") |>
+    gt::cols_align("left") |>
+    gt::tab_options(
+      table.font.names = "Times New Roman",
+      heading.align = "left",
+      column_labels.font.weight = "bold",
+      row_group.font.weight = "bold",
+      footnotes.marks = "standard"
+    ) |>
+    gt::opt_row_striping(TRUE)
+}
+style_iscore_calc_table <- function(table) {
+  table |>
+    gt::fmt_number(columns = c(`1992`, `2000`, change), decimals = 1) |>
+    gt::fmt_scientific(columns = significance, decimals = 1) |>
+    gt::cols_label(issue = "Issue", `1992` = "1992", `2000` = "2000", change = "Change", significance = "Significance") |>
+    gt::cols_hide(columns = significance_codes) |>
+    gt::tab_footnote(
+      footnote = "Significance codes:  0 ‘***’ 0.01 ‘**’ 0.05 ‘*’ 0.1 ‘ ’ 1",
+      locations = gt::cells_column_labels(columns = significance)
+    )
+}
+
+## Table 1: Ie-Score
+table_1_perot <- classification_results |>
+  dplyr::filter(party == "Perot 1992") |>
+  purrr::pluck("overall_emphasis_scores", 1) |>
+  dplyr::filter(score > 0.05) |>
+  dplyr::mutate(party = "Ross Perot") |>
+  dplyr::rename(`1992` = score)
+perot_top_issues <- table_1_perot$issue
+table_1 <- classification_results |>
+  dplyr::filter(stringr::str_detect(party, "(?=.*Democratic|Republican)(?=.*(1992|2000))")) |>
+  tidyr::separate(party, into = c("party", "year"), sep = " (?=\\d{4}$)") |>
+  dplyr::select(party, year, overall_emphasis_scores) |>
+  tidyr::unnest(overall_emphasis_scores) |>
+  dplyr::filter(issue %in% perot_top_issues) |>
+  tidyr::pivot_wider(names_from = year, values_from = score) |>
+  dplyr::mutate(change = `2000` - `1992`)
+ie_calculation_table <- calculation_results |>
+  dplyr::filter(party == "Perot 1992") |>
+  purrr::pluck("calculation_tables", 1, 1)
+ie_party_nums <- ie_calculation_table |>
+  dplyr::filter(name == "before") |>
+  dplyr::select(party, party_number) |>
+  dplyr::mutate(party = stringr::str_extract(party, "Democratic Party|Republican Party"))
+ie_significance_col <- ie_calculation_table |>
+  dplyr::filter(name == "significance") |>
+  dplyr::mutate(party = ie_party_nums$party[match(party_number, ie_party_nums$party_number)]) |>
+  tidyr::pivot_longer(cols = all_of(perot_top_issues), names_to = "issue", values_to = "significance") |>
+  dplyr::select(party, issue, significance)
+table_1 <- dplyr::left_join(table_1, ie_significance_col, by = c("party", "issue")) |>
+  dplyr::bind_rows(table_1_perot) |>
+  dplyr::arrange(factor(issue, levels = perot_top_issues)) |>
+  dplyr::arrange(factor(party, levels = c("Ross Perot", "Republican Party", "Democratic Party"))) |>
+  dplyr::mutate(significance_codes = dplyr::case_when(significance < 0.01 ~ "***", significance < 0.05 ~ "**", significance < 0.1 ~ "*", TRUE ~ ""))
+
+table_1_styled <- table_1 |>
+  gt::gt(groupname_col = "party", rowname_col = "issue") |>
+  gt::tab_header(title = md("**Table 1: Change In The Emphasis Of Perot’s Top Issues In Major Party Platforms Over The Extended Ross Perot Movement**")) |>
+  gt::text_transform(
+    locations = cells_body(columns = significance),
+    fn = function(x) {
+      paste0(x, " ", table_2$significance_codes)
+    }
+  ) |>
+  gt::tab_footnote(
+    footnote = "The numbers in this table are measured in percentage points.",
+    locations = gt::cells_column_labels(columns = `1992`)
+  ) |>
+  gt::tab_footnote(
+    footnote = "All figures in this paper were generated from whole, unrounded data, so derivative statistics, such as change, may appear to be off by +/-0.1.",
+    locations = gt::cells_column_labels(columns = change)
+  ) |>
+  style_table() |>
+  style_iscore_calc_table() |>
+  gt::fmt_number(columns = c(`1992`, `2000`, change), decimals = 1, scale_by = 100)
+gt::gtsave(table_1_styled, file.path("tables", "table1.png"))
+
+## Table 2: Ip-Score
+table_2_perot <- position_results |>
+  dplyr::filter(party == "Perot 1992") |>
+  purrr::pluck("position_scores", 1) |>
+  dplyr::filter(issue %in% perot_top_issues) |>
+  dplyr::mutate(party = "Ross Perot", significance_codes = "") |>
+  dplyr::rename(`1992` = score) |>
+  dplyr::arrange(factor(issue, levels = perot_top_issues)) |>
+  dplyr::select(issue, `1992`, party)
+table_2 <- position_results |>
+  dplyr::filter(stringr::str_detect(party, "(?=.*Democratic|Republican)(?=.*(1992|2000))")) |>
+  tidyr::separate(party, into = c("party", "year"), sep = " (?=\\d{4}$)") |>
+  tidyr::unnest(position_scores) |>
+  dplyr::filter(issue %in% perot_top_issues) |>
+  dplyr::select(party, year, issue, score) |>
+  tidyr::pivot_wider(names_from = year, values_from = score)
+ip_calculation_table <- calculation_results |>
+  dplyr::filter(party == "Perot 1992") |>
+  purrr::pluck("calculation_tables", 1, 2)
+ip_party_nums <- ip_calculation_table |>
+  dplyr::filter(name == "before") |>
+  dplyr::select(party, party_number) |>
+  dplyr::mutate(party = stringr::str_extract(party, "Democratic Party|Republican Party"))
+ip_significance_col <- ip_calculation_table |>
+  dplyr::filter(stringr::str_detect(name, "significance|change")) |>
+  dplyr::mutate(party = ip_party_nums$party[match(party_number, ip_party_nums$party_number)]) |>
+  tidyr::pivot_longer(cols = all_of(perot_top_issues), names_to = "issue", values_to = "value") |>
+  tidyr::pivot_wider(names_from = name, values_from = value) |>
+  dplyr::select(party, issue, change, significance)
+table_2 <- dplyr::left_join(table_2, ip_significance_col, by = c("party", "issue")) |>
+  dplyr::bind_rows(table_2_perot) |>
+  dplyr::arrange(factor(issue, levels = perot_top_issues)) |>
+  dplyr::arrange(factor(party, levels = c("Ross Perot", "Republican Party", "Democratic Party"))) |>
+  dplyr::mutate(significance_codes = dplyr::case_when(significance < 0.01 ~ "***", significance < 0.05 ~ "**", significance < 0.1 ~ "*", TRUE ~ ""))
+
+table_2_styled <- table_2 |>
+  gt::gt(groupname_col = "party", rowname_col = "issue") |>
+  gt::tab_header(title = md("**Table 2: Change In The Position Taken By Major Party Platforms On Perot’s Top Issues Over The Extended Ross Perot Movement**")) |>
+  gt::text_transform(
+    locations = cells_body(columns = significance),
+    fn = function(x) {
+      paste0(x, " ", table_2$significance_codes)
+    }
+  ) |>
+  gt::tab_footnote(
+    footnote = "Because 'Change' is the in distance from Perot's position, 'Change' is not necessarily equal to the difference between 2000 and 1992 scores.",
+    locations = gt::cells_column_labels(columns = change)
+  ) |>
+  style_table() |>
+  style_iscore_calc_table()
+gt::gtsave(table_2_styled, file.path("tables", "table2.png"))
+
+## Table 3: General Results
+table_3 <- calculation_results |>
+  tidyr::unnest_wider(scores) |>
+  dplyr::select(party, ie_score_interpreted, ip_score) |>
+  dplyr::left_join(additional_data, by = "party") |>
+  dplyr::mutate(election = purrr::map2_chr(movement_start, movement_end, function(movement_start, movement_end) {
+    if (movement_start == movement_end) {
+      as.character(movement_start)
+    } else {
+      paste0(movement_start, "-", movement_end)
+    }
+  }), party = stringr::str_extract(party, "^\\S+")) |>
+  dplyr::arrange(desc(movement_start)) |>
+  dplyr::select(election, party, vscore, sscore, ie_score_interpreted, ip_score)
+
+table_3_styled <- table_3 |>
+  gt::gt() |>
+  gt::tab_header(title = md("**Table 3: I-Scores For Post-World War II American Minor Party Candidates**")) |>
+  gt::cols_label(election = "Election(s)", party = "Party/Candidate Name", vscore = "Vote Share", sscore = "Seats", ie_score_interpreted = "Ie-Score (Interpreted)", ip_score = "Ip-Score") |>
+  gt::fmt_number(columns = c(sscore), decimals = 0) |>
+  gt::fmt_number(columns = c(ie_score_interpreted, ip_score), decimals = 2) |>
+  gt::tab_footnote(
+    footnote = "Each election year’s major party platforms were sourced from the American Presidency Project. 'Party Platforms | The American Presidency Project,' accessed August 8, 2025, https://www.presidency.ucsb.edu/documents/app-categories/elections-and-transitions/party-platforms.",
+    locations = gt::cells_title(groups = "title")
+  ) |>
+  gt::tab_footnote(
+    footnote = "Some independent candidates, such as Evan McMullin, did not have a formal platform; therefore, this study used an alternative document that intended to outline the campaign’s positions on a wide range of issues.",
+    locations = gt::cells_title(groups = "title")
+  ) |>
+  gt::tab_footnote(
+    footnote = "Vote share is measured in percentage points.",
+    locations = gt::cells_column_labels(columns = vscore)
+  ) |>
+  gt::tab_footnote(
+    footnote = "Vote share and seats won were sourced from the official FEC Federal Election Results packets for elections after 1976 and entries in Dave Leip's Atlas of U.S. Presidential Elections for elections before that date. 'Election Results and Voting Information,' FEC.Gov, accessed August 8, 2025, https://www.fec.gov/introduction-campaign-finance/election-results-and-voting-information/. Dave Leip, 'Dave Leip’s Atlas of U.S. Presidential Elections,' accessed August 8, 2025, https://uselectionatlas.org/.",
+    locations = gt::cells_column_labels(columns = vscore)
+  ) |>
+  gt::tab_footnote(
+    footnote = "'2016 Green Party Platform.Pdf,' Ballotpedia, April 2020, https://ballotpedia.org/File:2016_Green_Party_Platform.pdf.",
+    locations = gt::cells_body(columns = party, rows = `election` == "2016" & party == "Green")
+  ) |>
+  gt::tab_footnote(
+    footnote = "'On The Issues,' Evan McMullin for President, 2016, https://web.archive.org/web/20161107080610/https://www.evanmcmullin.com/issues.",
+    locations = gt::cells_body(columns = party, rows = `election` == "2016" & party == "McMullin")
+  ) |>
+  gt::tab_footnote(
+    footnote = "'National Platform 2016,' LPedia, May 2016, https://lpedia.org/wiki/Document:National_Platform_2016.",
+    locations = gt::cells_body(columns = party, rows = `election` == "2012-2020" & party == "Libertarian")
+  ) |>
+  gt::tab_footnote(
+    footnote = "'Political Issues That Matter,' Vote Nader, 2008, https://www.votenader.org/issues/.",
+    locations = gt::cells_body(columns = party, rows = `election` == "2008" & party == "Nader")
+  ) |>
+  gt::tab_footnote(
+    footnote = "'2000 Platform,' *Green Party of the United States*, n.d., accessed August 8, 2025, https://gpus.org/committees/platform/2000-platform/.",
+    locations = gt::cells_body(columns = party, rows = `election` == "1996-2000" & party == "Green")
+  ) |>
+  gt::tab_footnote(
+    footnote = "'National Platform 1996,' July 1996, https://lpedia.org/wiki/Document:National_Platform_1996.",
+    locations = gt::cells_body(columns = party, rows = `election` == "1996" & party == "Libertarian")
+  ) |>
+  gt::tab_footnote(
+    footnote = "Perot, *United We Stand*.",
+    locations = gt::cells_body(columns = party, rows = `election` == "1992-1996" & party == "Perot")
+  ) |>
+  gt::tab_footnote(
+    footnote = "The Anderson campaign released two platforms in 1980: 'Rebuilding a Society That Works: An Agenda for America' and 'The Program of the Anderson/Lucey National Unity Campaign.' This study uses the former because it is the document designed to be 'relatively short and deliberately selective.' This quality is likely to make the agenda more revealing of the campaign’s priorities than the more comprehensive program because its space constraint almost certainly forced Anderson to prioritize what issues he covered and at what length. Clifford W. Brown Jr and Robert J. Walker, *A Campaign of Ideas: The 1980 Anderson/Lucey Platform* (Praeger, 1984).",
+    locations = gt::cells_body(columns = party, rows = `election` == "1980" & party == "Anderson")
+  ) |>
+  gt::tab_footnote(
+    footnote = "'National Platform 1980,' LPedia, 1980, https://lpedia.org/wiki/Document:National_Platform_1980",
+    locations = gt::cells_body(columns = party, rows = `election` == "1980" & party == "Libertarian")
+  ) |>
+  gt::tab_footnote(
+    footnote = "'The Spirit of Independence,' 1976.",
+    locations = gt::cells_body(columns = party, rows = `election` == "1976" & party == "McCarthy")
+  ) |>
+  gt::tab_footnote(
+    footnote = "'American Independent Party Platform of 1968,' October 13, 1968, https://www.presidency.ucsb.edu/documents/american-independent-party-platform-1968.",
+    locations = gt::cells_body(columns = party, rows = `election` == "1968-1972" & party == "Independent")
+  ) |>
+  gt::tab_footnote(
+    footnote = "'Platform of the States Rights Democratic Party,' The American Presidency Project, August 14, 1948, https://www.presidency.ucsb.edu/documents/platform-the-states-rights-democratic-party.",
+    locations = gt::cells_body(columns = party, rows = `election` == "1948" & party == "Thurmond")
+  ) |>
+  gt::tab_footnote(
+    footnote = "'Progressive Party Platform of 1948,' The American Presidency Project, July 23, 1948, https://www.presidency.ucsb.edu/documents/progressive-party-platform-1948.",
+    locations = gt::cells_body(columns = party, rows = `election` == "1948" & party == "Wallace")
+  ) |>
+  gt::tab_footnote(
+    footnote = "Leo Isacson won a special election in 1948 after receiving Henry Wallace’s endorsement. He was, however, elected as a member of the American Labor Party. He is counted here due to the considerable overlap between labor movements in the 1940s, but removing him from the Progressive party’s total will not change the eventual conclusion that the number of legislative seats a party wins is wholly uncorrelated with more robust measures of minor party success. In fact, removing Isacson will lower the correlation coefficient, by definition, given the lack of any other Congresspeople representing minor parties listed here, to 0.",
+    locations = gt::cells_body(columns = sscore, rows = `election` == "1948" & party == "Wallace")
+  ) |>
+  style_table() |>
+  gt::tab_options(footnotes.marks = "letters")
+gt::gtsave(table_3_styled, file.path("tables", "table3.png"))
 
 # Calculate Correlations
 correlation_table <- calculation_results |>
