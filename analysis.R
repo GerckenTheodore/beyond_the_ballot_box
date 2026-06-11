@@ -186,11 +186,11 @@ table_1 <- dplyr::left_join(table_1, ie_significance_col, by = c("party", "issue
 
 table_1_styled <- table_1 |>
   gt::gt(groupname_col = "party", rowname_col = "issue") |>
-  gt::tab_header(title = md("**Table 1: Change In The Emphasis Of Perot’s Top Issues In Major Party Platforms Over The Extended Ross Perot Movement**")) |>
+  gt::tab_header(title = gt::md("Table 1: Change In The Emphasis Of Perot’s Top Issues In Major Party Platforms Over The Extended Ross Perot Movement**")) |>
   gt::text_transform(
-    locations = cells_body(columns = significance),
+    locations = gt::cells_body(columns = significance),
     fn = function(x) {
-      paste0(x, " ", table_2$significance_codes)
+      paste0(x, " ", table_1$significance_codes)
     }
   ) |>
   gt::tab_footnote(
@@ -205,6 +205,7 @@ table_1_styled <- table_1 |>
   style_iscore_calc_table() |>
   gt::fmt_number(columns = c(`1992`, `2000`, change), decimals = 1, scale_by = 100)
 gt::gtsave(table_1_styled, file.path("tables", "table1.png"))
+gt::gtsave(table_1_styled, file.path("tables", "table1.docx"))
 
 ## Table 2: Ip-Score
 table_2_perot <- position_results |>
@@ -243,9 +244,9 @@ table_2 <- dplyr::left_join(table_2, ip_significance_col, by = c("party", "issue
 
 table_2_styled <- table_2 |>
   gt::gt(groupname_col = "party", rowname_col = "issue") |>
-  gt::tab_header(title = md("**Table 2: Change In The Position Taken By Major Party Platforms On Perot’s Top Issues Over The Extended Ross Perot Movement**")) |>
+  gt::tab_header(title = gt::md("**Table 2: Change In The Position Taken By Major Party Platforms On Perot’s Top Issues Over The Extended Ross Perot Movement**")) |>
   gt::text_transform(
-    locations = cells_body(columns = significance),
+    locations = gt::cells_body(columns = significance),
     fn = function(x) {
       paste0(x, " ", table_2$significance_codes)
     }
@@ -257,6 +258,7 @@ table_2_styled <- table_2 |>
   style_table() |>
   style_iscore_calc_table()
 gt::gtsave(table_2_styled, file.path("tables", "table2.png"))
+gt::gtsave(table_2_styled, file.path("tables", "table2.docx"))
 
 ## Table 3: General Results
 table_3 <- calculation_results |>
@@ -275,7 +277,7 @@ table_3 <- calculation_results |>
 
 table_3_styled <- table_3 |>
   gt::gt() |>
-  gt::tab_header(title = md("**Table 3: I-Scores For Post-World War II American Minor Party Candidates**")) |>
+  gt::tab_header(title = gt::md("**Table 3: I-Scores For Post-World War II American Minor Party Candidates**")) |>
   gt::cols_label(election = "Election(s)", party = "Party/Candidate Name", vscore = "Vote Share", sscore = "Seats", ie_score_interpreted = "Ie-Score (Interpreted)", ip_score = "Ip-Score") |>
   gt::fmt_number(columns = c(sscore), decimals = 0) |>
   gt::fmt_number(columns = c(ie_score_interpreted, ip_score), decimals = 2) |>
@@ -354,6 +356,7 @@ table_3_styled <- table_3 |>
   style_table() |>
   gt::tab_options(footnotes.marks = "letters")
 gt::gtsave(table_3_styled, file.path("tables", "table3.png"))
+gt::gtsave(table_3_styled, file.path("tables", "table3.docx"))
 
 # Calculate Correlations
 correlation_table <- calculation_results |>
