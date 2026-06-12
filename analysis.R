@@ -282,79 +282,10 @@ table_3_styled <- table_3 |>
   gt::fmt_number(columns = c(sscore), decimals = 0) |>
   gt::fmt_number(columns = c(ie_score_interpreted, ip_score), decimals = 2) |>
   gt::tab_footnote(
-    footnote = "Each election year’s major party platforms were sourced from the American Presidency Project. 'Party Platforms | The American Presidency Project,' accessed August 8, 2025, https://www.presidency.ucsb.edu/documents/app-categories/elections-and-transitions/party-platforms.",
-    locations = gt::cells_title(groups = "title")
-  ) |>
-  gt::tab_footnote(
-    footnote = "Some independent candidates, such as Evan McMullin, did not have a formal platform; therefore, this study used an alternative document that intended to outline the campaign’s positions on a wide range of issues.",
-    locations = gt::cells_title(groups = "title")
-  ) |>
-  gt::tab_footnote(
     footnote = "Vote share is measured in percentage points.",
     locations = gt::cells_column_labels(columns = vscore)
   ) |>
-  gt::tab_footnote(
-    footnote = "Vote share and seats won were sourced from the official FEC Federal Election Results packets for elections after 1976 and entries in Dave Leip's Atlas of U.S. Presidential Elections for elections before that date. 'Election Results and Voting Information,' FEC.Gov, accessed August 8, 2025, https://www.fec.gov/introduction-campaign-finance/election-results-and-voting-information/. Dave Leip, 'Dave Leip’s Atlas of U.S. Presidential Elections,' accessed August 8, 2025, https://uselectionatlas.org/.",
-    locations = gt::cells_column_labels(columns = vscore)
-  ) |>
-  gt::tab_footnote(
-    footnote = "'2016 Green Party Platform.Pdf,' Ballotpedia, April 2020, https://ballotpedia.org/File:2016_Green_Party_Platform.pdf.",
-    locations = gt::cells_body(columns = party, rows = `election` == "2016" & party == "Green")
-  ) |>
-  gt::tab_footnote(
-    footnote = "'On The Issues,' Evan McMullin for President, 2016, https://web.archive.org/web/20161107080610/https://www.evanmcmullin.com/issues.",
-    locations = gt::cells_body(columns = party, rows = `election` == "2016" & party == "McMullin")
-  ) |>
-  gt::tab_footnote(
-    footnote = "'National Platform 2016,' LPedia, May 2016, https://lpedia.org/wiki/Document:National_Platform_2016.",
-    locations = gt::cells_body(columns = party, rows = `election` == "2012-2020" & party == "Libertarian")
-  ) |>
-  gt::tab_footnote(
-    footnote = "'Political Issues That Matter,' Vote Nader, 2008, https://www.votenader.org/issues/.",
-    locations = gt::cells_body(columns = party, rows = `election` == "2008" & party == "Nader")
-  ) |>
-  gt::tab_footnote(
-    footnote = "'2000 Platform,' *Green Party of the United States*, n.d., accessed August 8, 2025, https://gpus.org/committees/platform/2000-platform/.",
-    locations = gt::cells_body(columns = party, rows = `election` == "1996-2000" & party == "Green")
-  ) |>
-  gt::tab_footnote(
-    footnote = "'National Platform 1996,' July 1996, https://lpedia.org/wiki/Document:National_Platform_1996.",
-    locations = gt::cells_body(columns = party, rows = `election` == "1996" & party == "Libertarian")
-  ) |>
-  gt::tab_footnote(
-    footnote = "Perot, *United We Stand*.",
-    locations = gt::cells_body(columns = party, rows = `election` == "1992-1996" & party == "Perot")
-  ) |>
-  gt::tab_footnote(
-    footnote = "The Anderson campaign released two platforms in 1980: 'Rebuilding a Society That Works: An Agenda for America' and 'The Program of the Anderson/Lucey National Unity Campaign.' This study uses the former because it is the document designed to be 'relatively short and deliberately selective.' This quality is likely to make the agenda more revealing of the campaign’s priorities than the more comprehensive program because its space constraint almost certainly forced Anderson to prioritize what issues he covered and at what length. Clifford W. Brown Jr and Robert J. Walker, *A Campaign of Ideas: The 1980 Anderson/Lucey Platform* (Praeger, 1984).",
-    locations = gt::cells_body(columns = party, rows = `election` == "1980" & party == "Anderson")
-  ) |>
-  gt::tab_footnote(
-    footnote = "'National Platform 1980,' LPedia, 1980, https://lpedia.org/wiki/Document:National_Platform_1980",
-    locations = gt::cells_body(columns = party, rows = `election` == "1980" & party == "Libertarian")
-  ) |>
-  gt::tab_footnote(
-    footnote = "'The Spirit of Independence,' 1976.",
-    locations = gt::cells_body(columns = party, rows = `election` == "1976" & party == "McCarthy")
-  ) |>
-  gt::tab_footnote(
-    footnote = "'American Independent Party Platform of 1968,' October 13, 1968, https://www.presidency.ucsb.edu/documents/american-independent-party-platform-1968.",
-    locations = gt::cells_body(columns = party, rows = `election` == "1968-1972" & party == "Independent")
-  ) |>
-  gt::tab_footnote(
-    footnote = "'Platform of the States Rights Democratic Party,' The American Presidency Project, August 14, 1948, https://www.presidency.ucsb.edu/documents/platform-the-states-rights-democratic-party.",
-    locations = gt::cells_body(columns = party, rows = `election` == "1948" & party == "Thurmond")
-  ) |>
-  gt::tab_footnote(
-    footnote = "'Progressive Party Platform of 1948,' The American Presidency Project, July 23, 1948, https://www.presidency.ucsb.edu/documents/progressive-party-platform-1948.",
-    locations = gt::cells_body(columns = party, rows = `election` == "1948" & party == "Wallace")
-  ) |>
-  gt::tab_footnote(
-    footnote = "Leo Isacson won a special election in 1948 after receiving Henry Wallace’s endorsement. He was, however, elected as a member of the American Labor Party. He is counted here due to the considerable overlap between labor movements in the 1940s, but removing him from the Progressive party’s total will not change the eventual conclusion that the number of legislative seats a party wins is wholly uncorrelated with more robust measures of minor party success. In fact, removing Isacson will lower the correlation coefficient, by definition, given the lack of any other Congresspeople representing minor parties listed here, to 0.",
-    locations = gt::cells_body(columns = sscore, rows = `election` == "1948" & party == "Wallace")
-  ) |>
-  style_table() |>
-  gt::tab_options(footnotes.marks = "letters")
+  style_table()
 gt::gtsave(table_3_styled, file.path("tables", "table3.png"))
 gt::gtsave(table_3_styled, file.path("tables", "table3.docx"))
 
